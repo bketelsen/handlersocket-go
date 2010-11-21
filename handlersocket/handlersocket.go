@@ -16,8 +16,11 @@ package handlersocket
 
 import (
 	"net"
+	"net/textproto"
 	"os"
 	"log"
+	"io"
+	"fmt"
 	
 )
 
@@ -57,6 +60,17 @@ For efficiency, keep <indexid> small as far as possible.
 ----------------------------------------------------------------------------
 */
 func (h HandlerSocketConnection) OpenIndex(indexid int, dbname string, tablename string, indexname string, columns string) {
+		
+		var command =[]byte("P\t1\thstest\thstest_table1\tPRIMARY\tk,v\n")
+
+		n,err := h.tcpConn.Write(command)
+		fmt.Println("%v, %v", n, err)
+		
+		b := make([]byte, 1024)
+		m, err := h.tcpConn.Read(b)
+		fmt.Println("%v,%v,%v",b, m, err)
+		
+		
 
 }
 
@@ -96,10 +110,36 @@ func NewHandlerSocketConnection(address string) *HandlerSocketConnection {
 
 type HandlerSocketMessage struct {
 	raw string
+	message string
 }
 
 func NewHandlerSocketMessage(line string) *HandlerSocketMessage {
 	return &HandlerSocketMessage{raw: line}
+}
+
+func (conn *HandlerSocketConnection) Dispatch() {
+
+
+}
+
+func ReadLineIter(conn io.ReadWriteCloser) chan string {
+
+	ch := make(chan string)
+	textConn := textproto.NewConn(conn)
+
+	go func() {
+		for {
+			line, err := textConn.ReadLine()
+
+			if err != nil {
+				break
+			}
+			ch <- line
+		}
+		close(ch)
+	}()
+
+	return ch
 }
 
 

@@ -24,6 +24,7 @@ func Test(t *testing.T) {
 	
 	if c := NewHandlerSocketConnection("10.211.55.3:9999"); c != nil{
 		defer c.Close()
+		c.OpenIndex(1,"hstest", "hstest_table1", "PRIMARY", "k,v")
 		syscall.Sleep(600*1e9) // so I can watch netstat on the mysql server and verify the connection
 	}
 
