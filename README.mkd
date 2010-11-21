@@ -25,6 +25,7 @@ Brian Ketelsen - bketelsen@gmail.com
 
 ## Known bugs
 
+It doesn't work yet.  Right now, it creates connections and opens an index statically.  More work to be done!
 
 
 ## Credits and acknowledgments
