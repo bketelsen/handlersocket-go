@@ -64,11 +64,14 @@ func (h HandlerSocketConnection) OpenIndex(indexid int, dbname string, tablename
 		var command =[]byte("P\t1\thstest\thstest_table1\tPRIMARY\tk,v\n")
 
 		n,err := h.tcpConn.Write(command)
-		fmt.Println("%v, %v", n, err)
+		fmt.Println(n, err)
 		
 		b := make([]byte, 1024)
 		m, err := h.tcpConn.Read(b)
-		fmt.Println("%v,%v,%v",b, m, err)
+		fmt.Println(b, m, err)
+		fmt.Println(string(b[0:m]))
+		
+		// we should get "0	1" if everything works
 		
 		
 
