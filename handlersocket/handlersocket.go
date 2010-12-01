@@ -21,19 +21,33 @@ import (
 	"log"
 	"io"
 	"fmt"
+	"strings"
 	
 )
 
 const LF = 0x0a
 const HT = 0x09
 
-
+type HandlerSocketError struct {
+	Code	string
+	Description	string
+}
 
 type HandlerSocketConnection struct {
 	tcpConn        *net.TCPConn
 	incomingChannel chan *HandlerSocketMessage
 	outgoingChannel chan *HandlerSocketMessage
 	logger	*log.Logger
+	LastError	*HandlerSocketError
+}
+
+
+type HandlerSocketTarget struct {
+	database string
+	table	string
+	indexname	string
+	columns		[]string
+
 }
 
 
@@ -59,21 +73,47 @@ For efficiency, keep <indexid> small as far as possible.
 
 ----------------------------------------------------------------------------
 */
-func (h HandlerSocketConnection) OpenIndex(indexid int, dbname string, tablename string, indexname string, columns string) {
-		
-		var command =[]byte("P\t1\thstest\thstest_table1\tPRIMARY\tk,v\n")
 
-		n,err := h.tcpConn.Write(command)
+func buildOpenIndexCommand(target HandlerSocketTarget ) (cmd string){
+
+	cmd = ""
+	cmd += "P"	
+	cmd += "\t"
+	cmd += "1"  //hack! ++ need something else like an auto incr or a hash with smarts
+	cmd += "\t"
+	cmd += target.database
+	cmd += "\t"
+	cmd += target.table
+	cmd += "\t"
+	cmd += target.indexname
+	cmd += "\t"
+	
+	cmd += strings.Join(target.columns, ",")
+	cmd += "\n"
+
+	fmt.Println(cmd)
+	return
+}
+
+func buildHandlerSocketError(response []byte, length int, action string) *HandlerSocketError{
+	stringResponse := string(response[0:length])
+	retVal := strings.Split(stringResponse,"\t",-1)
+	hse := HandlerSocketError{Code:retVal[0], Description:action}
+	return &hse
+}
+
+func (self *HandlerSocketConnection) OpenIndex(indexid int, target HandlerSocketTarget) {
+		
+		var command =[]byte(buildOpenIndexCommand(target))
+
+		n,err := self.tcpConn.Write(command)
 		fmt.Println(n, err)
 		
-		b := make([]byte, 1024)
-		m, err := h.tcpConn.Read(b)
-		fmt.Println(b, m, err)
-		fmt.Println(string(b[0:m]))
-		
-		// we should get "0	1" if everything works
-		
-		
+		b := make([]byte, 256)
+		m, err := self.tcpConn.Read(b)
+		self.LastError = buildHandlerSocketError(b,m,"Open Index")
+		fmt.Println(self.LastError)
+
 
 }
 
@@ -105,6 +145,7 @@ func NewHandlerSocketConnection(address string) *HandlerSocketConnection {
 	newHsConn.tcpConn = tcpConn
 	newHsConn.incomingChannel = make(chan *HandlerSocketMessage, 100)
 	newHsConn.outgoingChannel = make(chan *HandlerSocketMessage, 100)
+	newHsConn.LastError = &HandlerSocketError{}
 
 //	go newHsConn.Dispatch()
 
