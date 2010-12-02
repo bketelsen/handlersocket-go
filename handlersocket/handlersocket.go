@@ -45,6 +45,70 @@ type HandlerSocketTarget struct {
 	columns   []string
 }
 
+var indexes map[int]HandlerSocketTarget
+
+func init(){
+	indexes = make(map[int]HandlerSocketTarget,10) //map of indexes
+}
+/*
+---------------------------------------------------------------------------
+Getting data
+
+The 'find' request has the following syntax.
+
+    <indexid> <op> <vlen> <v1> ... <vn> <limit> <offset>
+
+- <indexid> is a number. This number must be an <indexid> specified by a
+  'open_index' request executed previously on the same connection.
+- <op> specifies the comparison operation to use. The current version of
+  HandlerSocket supports '=', '>', '>=', '<', and '<='.
+- <vlen> indicates the length of the trailing parameters <v1> ... <vn>. This
+  must be smaller than or equal to the number of index columns specified by
+  specified by the corresponding 'open_index' request.
+- <v1> ... <vn> specify the index column values to fetch.
+- <limit> and <offset> are numbers. These parameters can be omitted. When
+  omitted, it works as if 1 and 0 are specified.
+
+----------------------------------------------------------------------------
+*/
+
+func buildFindCommand(indexid int, operator string,  limit int, offset int, columns... string) (cmd string){
+
+	cmd += string(indexid)
+	cmd += "\t"
+	cmd += operator //hack! ++ need something else like an auto incr or a hash with smarts
+	cmd += "\t"
+	cmd += string(len(columns))
+	cmd += "\t"
+	cmd += strings.Join(columns, "\t")
+	
+	cmd += string(limit)
+	cmd += "\t"
+
+	cmd += string(offset)
+	cmd += "\n"
+
+	fmt.Println(cmd)
+	return
+	
+}
+
+func (self *HandlerSocketConnection) Find(indexid int, operator string,  limit int, offset int, columns... string) {
+	// assumes the existence of an opened index
+	
+	var command = []byte(buildFindCommand(indexid, operator,  limit, offset, columns...))
+	_, err := self.tcpConn.Write(command)
+	if err != nil {
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP Write Failed"}
+		return
+	}
+
+	b := make([]byte, 256)
+	m, err := self.tcpConn.Read(b)
+	self.lastError = buildHandlerSocketError(b, m, "Open Index")
+
+}
+
 
 /*
 ----------------------------------------------------------------------------
@@ -109,7 +173,12 @@ func (self *HandlerSocketConnection) OpenIndex(indexid int, target HandlerSocket
 
 	b := make([]byte, 256)
 	m, err := self.tcpConn.Read(b)
+	if err != nil {
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP read byte conversion failed"}
+		return
+	}
 	self.lastError = buildHandlerSocketError(b, m, "Open Index")
+	indexes[indexid] = target
 
 }
 
