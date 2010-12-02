@@ -57,6 +57,8 @@ func TestRead(t *testing.T) {
 		if c.lastError.Code != "0" {
 			t.Errorf("Last Error Code = %s, want %s.", c.lastError.Code, "0")
 		}
+		c.Find("1","=","1","0","blue")
+		
 	}
 
 }

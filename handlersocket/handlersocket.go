@@ -72,40 +72,29 @@ The 'find' request has the following syntax.
 ----------------------------------------------------------------------------
 */
 
-func buildFindCommand(indexid int, operator string,  limit int, offset int, columns... string) (cmd string){
+func buildFindCommand(indexid string, operator string,  limit string, offset string, columns... string) (cmd string){
 
-	cmd += string(indexid)
-	cmd += "\t"
-	cmd += operator //hack! ++ need something else like an auto incr or a hash with smarts
-	cmd += "\t"
-	cmd += string(len(columns))
-	cmd += "\t"
-	cmd += strings.Join(columns, "\t")
-	
-	cmd += string(limit)
-	cmd += "\t"
+	cmd = fmt.Sprintf("%s\t%s\t%d\t%s\n", indexid, operator, len(columns),strings.Join(columns,"\t"))
 
-	cmd += string(offset)
-	cmd += "\n"
-
-	fmt.Println(cmd)
 	return
 	
 }
 
-func (self *HandlerSocketConnection) Find(indexid int, operator string,  limit int, offset int, columns... string) {
+func (self *HandlerSocketConnection) Find(indexid string, operator string,  limit string, offset string, columns... string) () {
 	// assumes the existence of an opened index
 	
 	var command = []byte(buildFindCommand(indexid, operator,  limit, offset, columns...))
 	_, err := self.tcpConn.Write(command)
 	if err != nil {
-		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP Write Failed"}
+		self.lastError = &HandlerSocketError{Code: "-2", Description: "TCP Write Failed"}
 		return
 	}
-
-	b := make([]byte, 256)
+	
+	// i guess this needs to be a byte stream?
+	b := make([]byte, 2048)
 	m, err := self.tcpConn.Read(b)
-	self.lastError = buildHandlerSocketError(b, m, "Open Index")
+	fmt.Println(string(b[0:m]))
+	self.lastError = buildHandlerSocketError(b, m, "Find")
 
 }
 
