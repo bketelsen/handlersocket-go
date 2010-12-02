@@ -16,35 +16,33 @@ package handlersocket
 
 import (
 	"net"
-	"net/textproto"
+	//	"net/textproto"
 	"os"
 	"log"
-	"io"
+	//	"io"
 	"fmt"
 	"strings"
-	
 )
 
 type HandlerSocketError struct {
-	Code	string
-	Description	string
+	Code        string
+	Description string
 }
 
 type HandlerSocketConnection struct {
-	tcpConn        *net.TCPConn
+	tcpConn         *net.TCPConn
 	incomingChannel chan *HandlerSocketMessage
 	outgoingChannel chan *HandlerSocketMessage
-	logger	*log.Logger
-	lastError	*HandlerSocketError
+	logger          *log.Logger
+	lastError       *HandlerSocketError
 }
 
 
 type HandlerSocketTarget struct {
-	database string
-	table	string
-	indexname	string
-	columns		[]string
-
+	database  string
+	table     string
+	indexname string
+	columns   []string
 }
 
 
@@ -71,12 +69,12 @@ For efficiency, keep <indexid> small as far as possible.
 ----------------------------------------------------------------------------
 */
 
-func buildOpenIndexCommand(target HandlerSocketTarget ) (cmd string){
+func buildOpenIndexCommand(target HandlerSocketTarget) (cmd string) {
 
 	cmd = ""
-	cmd += "P"	
+	cmd += "P"
 	cmd += "\t"
-	cmd += "1"  //hack! ++ need something else like an auto incr or a hash with smarts
+	cmd += "1" //hack! ++ need something else like an auto incr or a hash with smarts
 	cmd += "\t"
 	cmd += target.database
 	cmd += "\t"
@@ -84,7 +82,7 @@ func buildOpenIndexCommand(target HandlerSocketTarget ) (cmd string){
 	cmd += "\t"
 	cmd += target.indexname
 	cmd += "\t"
-	
+
 	cmd += strings.Join(target.columns, ",")
 	cmd += "\n"
 
@@ -92,31 +90,30 @@ func buildOpenIndexCommand(target HandlerSocketTarget ) (cmd string){
 	return
 }
 
-func buildHandlerSocketError(response []byte, length int, action string) *HandlerSocketError{
+func buildHandlerSocketError(response []byte, length int, action string) *HandlerSocketError {
 	stringResponse := string(response[0:length])
-	retVal := strings.Split(stringResponse,"\t",-1)
-	hse := HandlerSocketError{Code:retVal[0], Description:action}
+	retVal := strings.Split(stringResponse, "\t", -1)
+	hse := HandlerSocketError{Code: retVal[0], Description: action}
 	return &hse
 }
 
 func (self *HandlerSocketConnection) OpenIndex(indexid int, target HandlerSocketTarget) {
-		
-		var command =[]byte(buildOpenIndexCommand(target))
 
-		_,err := self.tcpConn.Write(command)
-		if err != nil {
-			self.lastError = &HandlerSocketError{Code:"-1",Description:"TCP Write Failed"}
-			return
-		}
-		
-		b := make([]byte, 256)
-		m, err := self.tcpConn.Read(b)
-		self.lastError = buildHandlerSocketError(b,m,"Open Index")
+	var command = []byte(buildOpenIndexCommand(target))
 
+	_, err := self.tcpConn.Write(command)
+	if err != nil {
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP Write Failed"}
+		return
+	}
+
+	b := make([]byte, 256)
+	m, err := self.tcpConn.Read(b)
+	self.lastError = buildHandlerSocketError(b, m, "Open Index")
 
 }
 
-	
+
 func (h HandlerSocketConnection) Close() (err os.Error) {
 	if err := h.tcpConn.Close(); err != nil {
 		return os.EINVAL
@@ -125,17 +122,17 @@ func (h HandlerSocketConnection) Close() (err os.Error) {
 }
 
 func NewHandlerSocketConnection(address string) *HandlerSocketConnection {
-	
+
 	localAddress, _ := net.ResolveTCPAddr("0.0.0.0:0")
 	hsAddress, err := net.ResolveTCPAddr(address)
 
-	if(err != nil) {
+	if err != nil {
 		return nil
 	}
 
 	tcpConn, err := net.DialTCP("tcp", localAddress, hsAddress)
 
-	if(err != nil) {
+	if err != nil {
 		return nil
 	}
 
@@ -146,11 +143,12 @@ func NewHandlerSocketConnection(address string) *HandlerSocketConnection {
 	newHsConn.outgoingChannel = make(chan *HandlerSocketMessage, 100)
 	newHsConn.lastError = &HandlerSocketError{}
 
-//	go newHsConn.Dispatch()
+	//	go newHsConn.Dispatch()
 
 	return &newHsConn
 }
 
-
-
-
+type HandlerSocketMessage struct {
+	raw     string
+	message string
+}
