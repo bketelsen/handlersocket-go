@@ -25,9 +25,6 @@ import (
 	
 )
 
-const LF = 0x0a
-const HT = 0x09
-
 type HandlerSocketError struct {
 	Code	string
 	Description	string
@@ -38,7 +35,7 @@ type HandlerSocketConnection struct {
 	incomingChannel chan *HandlerSocketMessage
 	outgoingChannel chan *HandlerSocketMessage
 	logger	*log.Logger
-	LastError	*HandlerSocketError
+	lastError	*HandlerSocketError
 }
 
 
@@ -106,13 +103,15 @@ func (self *HandlerSocketConnection) OpenIndex(indexid int, target HandlerSocket
 		
 		var command =[]byte(buildOpenIndexCommand(target))
 
-		n,err := self.tcpConn.Write(command)
-		fmt.Println(n, err)
+		_,err := self.tcpConn.Write(command)
+		if err != nil {
+			self.lastError = &HandlerSocketError{Code:"-1",Description:"TCP Write Failed"}
+			return
+		}
 		
 		b := make([]byte, 256)
 		m, err := self.tcpConn.Read(b)
-		self.LastError = buildHandlerSocketError(b,m,"Open Index")
-		fmt.Println(self.LastError)
+		self.lastError = buildHandlerSocketError(b,m,"Open Index")
 
 
 }
@@ -145,45 +144,13 @@ func NewHandlerSocketConnection(address string) *HandlerSocketConnection {
 	newHsConn.tcpConn = tcpConn
 	newHsConn.incomingChannel = make(chan *HandlerSocketMessage, 100)
 	newHsConn.outgoingChannel = make(chan *HandlerSocketMessage, 100)
-	newHsConn.LastError = &HandlerSocketError{}
+	newHsConn.lastError = &HandlerSocketError{}
 
 //	go newHsConn.Dispatch()
 
 	return &newHsConn
 }
 
-type HandlerSocketMessage struct {
-	raw string
-	message string
-}
 
-func NewHandlerSocketMessage(line string) *HandlerSocketMessage {
-	return &HandlerSocketMessage{raw: line}
-}
-
-func (conn *HandlerSocketConnection) Dispatch() {
-
-
-}
-
-func ReadLineIter(conn io.ReadWriteCloser) chan string {
-
-	ch := make(chan string)
-	textConn := textproto.NewConn(conn)
-
-	go func() {
-		for {
-			line, err := textConn.ReadLine()
-
-			if err != nil {
-				break
-			}
-			ch <- line
-		}
-		close(ch)
-	}()
-
-	return ch
-}
 
 
