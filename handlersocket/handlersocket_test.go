@@ -25,8 +25,8 @@ func TestOpenIndex(t *testing.T) {
 	
 	if c := NewHandlerSocketConnection("127.0.0.1:9999"); c != nil{
 		defer c.Close()
-		target := HandlerSocketTarget{database:"hstest",table:"hstest_table1",indexname:"PRIMARY", columns:[]string{"k","v"}}
-		c.OpenIndex(1,target)
+		target := HandlerSocketTarget{index:1,database:"hstest",table:"hstest_table1",indexname:"PRIMARY", columns:[]string{"k","v"}}
+		c.OpenIndex(target)
 		fmt.Println(c.lastError)
 		if c.lastError.Code != "0" {
 			t.Errorf("Last Error Code = %s, want %s.", c.lastError.Code, "0")
@@ -39,8 +39,8 @@ func TestWrite(t *testing.T) {
 	
 	if c := NewHandlerSocketConnection("127.0.0.1:9999"); c != nil{
 		defer c.Close()
-		target := HandlerSocketTarget{database:"hstest",table:"hstest_table1",indexname:"PRIMARY", columns:[]string{"k","v"}}
-		c.OpenIndex(1,target)
+		target := HandlerSocketTarget{index:1,database:"hstest",table:"hstest_table1",indexname:"PRIMARY", columns:[]string{"k","v"}}
+		c.OpenIndex(target)
 		fmt.Println(c.lastError)
 		if c.lastError.Code != "0" {
 			t.Errorf("Last Error Code = %s, want %s.", c.lastError.Code, "0")
@@ -51,8 +51,8 @@ func TestRead(t *testing.T) {
 	
 	if c := NewHandlerSocketConnection("127.0.0.1:9999"); c != nil{
 		defer c.Close()
-		target := HandlerSocketTarget{database:"hstest",table:"hstest_table1",indexname:"PRIMARY", columns:[]string{"k","v"}}
-		c.OpenIndex(1,target)
+		target := HandlerSocketTarget{index:1,database:"hstest",table:"hstest_table1",indexname:"PRIMARY", columns:[]string{"k","v"}}
+		c.OpenIndex(target)
 		fmt.Println(c.lastError)
 		if c.lastError.Code != "0" {
 			t.Errorf("Last Error Code = %s, want %s.", c.lastError.Code, "0")

@@ -39,6 +39,7 @@ type HandlerSocketConnection struct {
 
 
 type HandlerSocketTarget struct {
+	index	int
 	database  string
 	table     string
 	indexname string
@@ -124,20 +125,7 @@ For efficiency, keep <indexid> small as far as possible.
 
 func buildOpenIndexCommand(target HandlerSocketTarget) (cmd string) {
 
-	cmd = ""
-	cmd += "P"
-	cmd += "\t"
-	cmd += "1" //hack! ++ need something else like an auto incr or a hash with smarts
-	cmd += "\t"
-	cmd += target.database
-	cmd += "\t"
-	cmd += target.table
-	cmd += "\t"
-	cmd += target.indexname
-	cmd += "\t"
-
-	cmd += strings.Join(target.columns, ",")
-	cmd += "\n"
+	cmd = fmt.Sprintf("P\t%d\t%s\t%s\t%s\t%s\n", target.index, target.database,target.table,target.indexname, strings.Join(target.columns,","))
 
 	fmt.Println(cmd)
 	return
@@ -150,7 +138,7 @@ func buildHandlerSocketError(response []byte, length int, action string) *Handle
 	return &hse
 }
 
-func (self *HandlerSocketConnection) OpenIndex(indexid int, target HandlerSocketTarget) {
+func (self *HandlerSocketConnection) OpenIndex(target HandlerSocketTarget) {
 
 	var command = []byte(buildOpenIndexCommand(target))
 
@@ -167,7 +155,7 @@ func (self *HandlerSocketConnection) OpenIndex(indexid int, target HandlerSocket
 		return
 	}
 	self.lastError = buildHandlerSocketError(b, m, "Open Index")
-	indexes[indexid] = target
+	indexes[target.index] = target
 
 }
 
