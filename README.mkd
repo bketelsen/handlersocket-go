@@ -31,7 +31,6 @@ It doesn't work yet.  Right now, it creates connections and opens an index stati
 ## Credits and acknowledgments
 
 For credits, see file AUTHORS and CONTRIBUTORS (if any).
-Many pieces of this code were heavily inspired by https://github.com/strtok/lilirc (ERIK FEARS)
 
 ## ChangeLog
 

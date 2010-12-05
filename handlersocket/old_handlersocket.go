@@ -15,12 +15,12 @@
 package handlersocket
 
 import (
-//	"net"
-	"hsproto"
+	"net"
+	//	"net/textproto"
 	"os"
 	"log"
 	//	"io"
-//	"bufio"
+	"bufio"
 //	"bytes"
 	"fmt"
 	"strings"
@@ -32,7 +32,9 @@ type HandlerSocketError struct {
 }
 
 type HandlerSocketConnection struct {
-	tcpConn         *hsproto.Conn
+	tcpConn         *net.TCPConn
+	reader 			*bufio.Reader
+	writer 			*bufio.Writer 
 	logger          *log.Logger
 	lastError       *HandlerSocketError
 	target			*HandlerSocketTarget
@@ -88,12 +90,25 @@ func (self *HandlerSocketConnection) Find(indexid string, operator string,  limi
 	// assumes the existence of an opened index
 	
 	fmt.Println("find")
-	_ = self.tcpConn.Writer.PrintfLine("%s\t%s\t%d\t%s\n", indexid, operator, len(columns),strings.Join(columns,"\t"))
-	 code , message , err := self.tcpConn.Reader.ReadCodeLine(0)
-	fmt.Println("code:", code)
-	fmt.Println("message:", message)
-	fmt.Println("err", err)
+	var command = []byte(buildFindCommand(indexid, operator,  limit, offset, columns...))
+	_, err := self.tcpConn.Write(command)
+	if err != nil {
+		fmt.Println("err!")
+		
+		self.lastError = &HandlerSocketError{Code: "-2", Description: "TCP Write Failed"}
+		return
+	}
 	
+
+	space := []byte{'\t'}
+	fmt.Println("-",string(space),"-")
+	resultCode, err := self.reader.ReadBytes(space[0])
+	if err != nil {
+		fmt.Println("err!")
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP read byte conversion failed"}
+		return
+	}
+	fmt.Println("returned:",string(resultCode))
 
 //	self.lastError = buildHandlerSocketError(b, m, "Find")
 
@@ -123,18 +138,60 @@ For efficiency, keep <indexid> small as far as possible.
 ----------------------------------------------------------------------------
 */
 
+func buildOpenIndexCommand(target HandlerSocketTarget) (cmd string) {
 
+	cmd = fmt.Sprintf("P\t%d\t%s\t%s\t%s\t%s\n", target.index, target.database,target.table,target.indexname, strings.Join(target.columns,","))
+	return
+}
+
+func buildHandlerSocketError(response []byte, length int, action string) *HandlerSocketError {
+	stringResponse := string(response[0:length])
+	retVal := strings.Split(stringResponse, "\t", -1)
+	hse := HandlerSocketError{Code: retVal[0], Description: action}
+	return &hse
+}
 
 func (self *HandlerSocketConnection) OpenIndex(target HandlerSocketTarget) {
 
+	var command = []byte(buildOpenIndexCommand(target))
 	fmt.Println("open")
-	_ = self.tcpConn.Writer.PrintfLine("P\t%d\t%s\t%s\t%s\t%s\n", target.index, target.database,target.table,target.indexname, strings.Join(target.columns,","))
+	_, err := self.tcpConn.Write(command)
+	if err != nil {
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP Write Failed"}
+		return
+	}
 
-
-	 code , message , _ := self.tcpConn.Reader.ReadCodeLine(0)
-	fmt.Println("code:", code)
-	fmt.Println("message:", message)
-//	fmt.Println("err", err)
+	newline := []byte{'\n'}
+	tab := []byte{'\t'}
+		fmt.Println("red",string(tab),"green",string(newline))
+	success, err := self.reader.ReadByte()
+	if err != nil {
+		fmt.Println("err1!")
+		
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP read byte conversion failed"}
+		return
+	}
+	fmt.Println("success",string(success))
+	
+	delim, err0 := self.reader.ReadByte()
+	if err0 != nil {
+		fmt.Println("err0	!")
+		
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP read byte conversion failed"}
+		return
+	}
+	fmt.Println("delim",string(delim))
+	
+	
+	code, err1 := self.reader.ReadByte()
+	if err1 != nil {
+		fmt.Println("err2	!")
+		
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP read byte conversion failed"}
+		return
+	}
+	fmt.Println("code",string(code))
+	
 //	self.lastError = buildHandlerSocketError(b, m, "Open Index")
 	indexes[target.index] = target
 
@@ -150,13 +207,17 @@ func (h HandlerSocketConnection) Close() (err os.Error) {
 
 func NewHandlerSocketConnection(target HandlerSocketTarget) *HandlerSocketConnection {
 
+	localAddress, _ := net.ResolveTCPAddr("0.0.0.0:0")
 	targetAddress := fmt.Sprintf("%s:%d",target.host, target.port)
-
-	fmt.Println("Dialing!")
-	tcpConn, err := hsproto.Dial("tcp", targetAddress)
+	hsAddress, err := net.ResolveTCPAddr(targetAddress)
 
 	if err != nil {
-		fmt.Println("DIDN'T CONNECT!")
+		return nil
+	}
+
+	tcpConn, err := net.DialTCP("tcp", localAddress, hsAddress)
+
+	if err != nil {
 		return nil
 	}
 
@@ -165,6 +226,8 @@ func NewHandlerSocketConnection(target HandlerSocketTarget) *HandlerSocketConnec
 	newHsConn.tcpConn = tcpConn
 	newHsConn.lastError = &HandlerSocketError{}
 	newHsConn.target = &target
+	newHsConn.reader = bufio.NewReader(newHsConn.tcpConn)
+	newHsConn.writer = bufio.NewWriter(newHsConn.tcpConn)
 	
 
 	//	go newHsConn.Dispatch()
