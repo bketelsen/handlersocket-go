@@ -17,28 +17,27 @@ package handlersocket
 import (
 	"testing"
 	"fmt"
-//	"syscall"
+	//	"syscall"
 )
 
 
 func TestOpenIndex(t *testing.T) {
-	target := HandlerSocketTarget{host:"127.0.0.1", port:9999,index:1,database:"hstest",table:"hstest_table1",indexname:"PRIMARY", columns:[]string{"k","v"}}
-	
-	if c := NewHandlerSocketConnection(target); c != nil{
+	target := HandlerSocketTarget{host: "127.0.0.1", port: 9999, index: 1, database: "hstest", table: "hstest_table1", indexname: "PRIMARY", columns: []string{"k", "v"}}
+
+	if c := NewHandlerSocketConnection(target); c != nil {
 		defer c.Close()
 		c.OpenIndex(target)
-		fmt.Println(c.lastError)
 		if c.lastError.Code != "0" {
 			t.Errorf("Last Error Code = %s, want %s.", c.lastError.Code, "0")
 		}
 	}
 
 }
-
+/*
 func TestWrite(t *testing.T) {
-	target := HandlerSocketTarget{host:"127.0.0.1", port:9999,index:1,database:"hstest",table:"hstest_table1",indexname:"PRIMARY", columns:[]string{"k","v"}}
-	
-	if c := NewHandlerSocketConnection(target); c != nil{
+	target := HandlerSocketTarget{host: "127.0.0.1", port: 9999, index: 1, database: "hstest", table: "hstest_table1", indexname: "PRIMARY", columns: []string{"k", "v"}}
+
+	if c := NewHandlerSocketConnection(target); c != nil {
 		defer c.Close()
 		c.OpenIndex(target)
 		fmt.Println(c.lastError)
@@ -47,38 +46,37 @@ func TestWrite(t *testing.T) {
 		}
 	}
 }
+*/
+
 func TestRead(t *testing.T) {
-	target := HandlerSocketTarget{host:"127.0.0.1", port:9999,index:1,database:"hstest",table:"hstest_table1",indexname:"PRIMARY", columns:[]string{"k","v"}}
-	
-	if c := NewHandlerSocketConnection(target); c != nil{
+	target := HandlerSocketTarget{host: "127.0.0.1", port: 9999, index: 1, database: "hstest", table: "hstest_table1", indexname: "PRIMARY", columns: []string{"k", "v"}}
+
+	if c := NewHandlerSocketConnection(target); c != nil {
 		defer c.Close()
 		c.OpenIndex(target)
-		fmt.Println(c.lastError)
 		if c.lastError.Code != "0" {
 			t.Errorf("Last Error Code = %s, want %s.", c.lastError.Code, "0")
 		}
-		c.Find("1","=","1","0","blue")
-		
+		resp := c.Find("1", "=", "1", "0", "blue")
+		fmt.Println(resp)
+
 	}
 
 }
 
 func BenchmarkRead(b *testing.B) {
-	target := HandlerSocketTarget{host:"127.0.0.1", port:9999,index:1,database:"hstest",table:"hstest_table1",indexname:"PRIMARY", columns:[]string{"k","v"}}
-	// 1,000,000,000
-
-	if c := NewHandlerSocketConnection(target); c != nil{
+	target := HandlerSocketTarget{host: "127.0.0.1", port: 9999, index: 1, database: "hstest", table: "hstest_table1", indexname: "PRIMARY", columns: []string{"k", "v"}}
+	if c := NewHandlerSocketConnection(target); c != nil {
 		defer c.Close()
 		c.OpenIndex(target)
 
-    for i := 0; i < b.N; i++ {
+		for i := 0; i < b.N; i++ {
 
 			if c.lastError.Code != "0" {
 				fmt.Println("Last Error Code = %s, want %s.", c.lastError.Code, "0")
 			}
-			c.Find("1","=","1","0","blue")
+			c.Find("1", "=", "1", "0", "blue")
 
 		}
-    }
+	}
 }
-

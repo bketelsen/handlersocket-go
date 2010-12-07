@@ -15,13 +15,10 @@
 package handlersocket
 
 import (
-//	"net"
-	"hsproto"
+	"net"
 	"os"
 	"log"
-	//	"io"
-//	"bufio"
-//	"bytes"
+	"bufio"
 	"fmt"
 	"strings"
 )
@@ -32,17 +29,19 @@ type HandlerSocketError struct {
 }
 
 type HandlerSocketConnection struct {
-	tcpConn         *hsproto.Conn
-	logger          *log.Logger
-	lastError       *HandlerSocketError
-	target			*HandlerSocketTarget
+	tcpConn   *net.TCPConn
+	reader    *bufio.Reader
+	writer    *bufio.Writer
+	logger    *log.Logger
+	lastError *HandlerSocketError
+	target    *HandlerSocketTarget
 }
 
 
 type HandlerSocketTarget struct {
-	host	string
-	port	int
-	index	int
+	host      string
+	port      int
+	index     int
 	database  string
 	table     string
 	indexname string
@@ -51,8 +50,8 @@ type HandlerSocketTarget struct {
 
 var indexes map[int]HandlerSocketTarget
 
-func init(){
-	indexes = make(map[int]HandlerSocketTarget,10) //map of indexes
+func init() {
+	indexes = make(map[int]HandlerSocketTarget, 10) //map of indexes
 }
 /*
 ---------------------------------------------------------------------------
@@ -76,26 +75,43 @@ The 'find' request has the following syntax.
 ----------------------------------------------------------------------------
 */
 
-func buildFindCommand(indexid string, operator string,  limit string, offset string, columns... string) (cmd string){
+func buildFindCommand(indexid string, operator string, limit string, offset string, columns ...string) (cmd string) {
 
-	cmd = fmt.Sprintf("%s\t%s\t%d\t%s\n", indexid, operator, len(columns),strings.Join(columns,"\t"))
+	cmd = fmt.Sprintf("%s\t%s\t%d\t%s\n", indexid, operator, len(columns), strings.Join(columns, "\t"))
 
 	return
-	
+
 }
 
-func (self *HandlerSocketConnection) Find(indexid string, operator string,  limit string, offset string, columns... string) () {
-	// assumes the existence of an opened index
-	
-	fmt.Println("find")
-	_ = self.tcpConn.Writer.PrintfLine("%s\t%s\t%d\t%s\n", indexid, operator, len(columns),strings.Join(columns,"\t"))
-	 code , message , err := self.tcpConn.Reader.ReadCodeLine(0)
-	fmt.Println("code:", code)
-	fmt.Println("message:", message)
-	fmt.Println("err", err)
-	
+func (self *HandlerSocketConnection) Find(indexid string, operator string, limit string, offset string, columns ...string) (resp []string) {
+	var command = []byte(buildFindCommand(indexid, operator, limit, offset, columns...))
+	_, err := self.tcpConn.Write(command)
+	if err != nil {
+		fmt.Println("err!")
+		self.lastError = &HandlerSocketError{Code: "-2", Description: "TCP Write Failed"}
+		return
+	}
 
-//	self.lastError = buildHandlerSocketError(b, m, "Find")
+	code, err := self.reader.ReadByte()
+	if err != nil {
+		fmt.Println("Error reading response")
+		self.lastError = &HandlerSocketError{Code: "-2", Description: "TCP Read Failed"}
+
+	}
+
+	if string(code) == "0" {
+		line, err_read := self.reader.ReadString(0x0a)
+		if err_read != nil {
+			//bad
+			fmt.Println("Error reading response")
+			self.lastError = &HandlerSocketError{Code: "-2", Description: "TCP Read Failed"}
+
+		}
+		resp = strings.Fields(line)
+		resp = resp[1:]
+		self.lastError = &HandlerSocketError{Code: "0", Description: "SUCCESS"}
+	}
+	return
 
 }
 
@@ -123,19 +139,55 @@ For efficiency, keep <indexid> small as far as possible.
 ----------------------------------------------------------------------------
 */
 
+func buildOpenIndexCommand(target HandlerSocketTarget) (cmd string) {
+
+	cmd = fmt.Sprintf("P\t%d\t%s\t%s\t%s\t%s\n", target.index, target.database, target.table, target.indexname, strings.Join(target.columns, ","))
+	return
+}
 
 
 func (self *HandlerSocketConnection) OpenIndex(target HandlerSocketTarget) {
 
-	fmt.Println("open")
-	_ = self.tcpConn.Writer.PrintfLine("P\t%d\t%s\t%s\t%s\t%s\n", target.index, target.database,target.table,target.indexname, strings.Join(target.columns,","))
+	var command = []byte(buildOpenIndexCommand(target))
+	_, err := self.tcpConn.Write(command)
+	if err != nil {
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP Write Failed"}
+		return
+	}
+
+	_, err = self.reader.ReadByte()
+	if err != nil {
+		fmt.Println("err1!")
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP read byte conversion failed"}
+		return
+	}
+
+	_, err0 := self.reader.ReadByte()
+	if err0 != nil {
+		fmt.Println("err0	!")
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP read byte conversion failed"}
+		return
+	}
+
+	_, err1 := self.reader.ReadByte()
+	if err1 != nil {
+		fmt.Println("err2	!")
+
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP read byte conversion failed"}
+		return
+	}
 
 
-	 code , message , _ := self.tcpConn.Reader.ReadCodeLine(0)
-	fmt.Println("code:", code)
-	fmt.Println("message:", message)
-//	fmt.Println("err", err)
-//	self.lastError = buildHandlerSocketError(b, m, "Open Index")
+	_, err2 := self.reader.ReadByte()
+	if err2 != nil {
+		fmt.Println("err2	!")
+
+		self.lastError = &HandlerSocketError{Code: "-1", Description: "TCP read byte conversion failed"}
+		return
+	}
+
+	self.lastError = &HandlerSocketError{Code: "0", Description: "SUCCESS"}
+
 	indexes[target.index] = target
 
 }
@@ -150,13 +202,17 @@ func (h HandlerSocketConnection) Close() (err os.Error) {
 
 func NewHandlerSocketConnection(target HandlerSocketTarget) *HandlerSocketConnection {
 
-	targetAddress := fmt.Sprintf("%s:%d",target.host, target.port)
-
-	fmt.Println("Dialing!")
-	tcpConn, err := hsproto.Dial("tcp", targetAddress)
+	localAddress, _ := net.ResolveTCPAddr("0.0.0.0:0")
+	targetAddress := fmt.Sprintf("%s:%d", target.host, target.port)
+	hsAddress, err := net.ResolveTCPAddr(targetAddress)
 
 	if err != nil {
-		fmt.Println("DIDN'T CONNECT!")
+		return nil
+	}
+
+	tcpConn, err := net.DialTCP("tcp", localAddress, hsAddress)
+
+	if err != nil {
 		return nil
 	}
 
@@ -165,7 +221,8 @@ func NewHandlerSocketConnection(target HandlerSocketTarget) *HandlerSocketConnec
 	newHsConn.tcpConn = tcpConn
 	newHsConn.lastError = &HandlerSocketError{}
 	newHsConn.target = &target
-	
+	newHsConn.reader = bufio.NewReader(newHsConn.tcpConn)
+	newHsConn.writer = bufio.NewWriter(newHsConn.tcpConn)
 
 	//	go newHsConn.Dispatch()
 
