@@ -1,0 +1,46 @@
+handlersocket-go
+================
+
+Go library for connecting to HandlerSocket Mysql plugin.  See github.com/ahiguti/HandlerSocket-Plugin-for-MySQL/
+
+
+## Installation
+
+	$ goinstall github.com/bketelsen/handlersocket-go
+
+
+
+## Copyright and licensing
+
+Licensed under **Apache License, version 2.0**.  
+See file LICENSE.
+
+
+## Contact
+
+Brian Ketelsen - bketelsen@gmail.com
+
+## Known bugs
+
+Implementation isn't complete.  
+Working:  OpenIndex, Find
+Not Implemented:  Update/Delete, Insert
+
+
+## Credits and acknowledgments
+
+I was heavily inspired by IO code from stomp.go
+https://github.com/nf/gostomp/blob/master/stomp.go
+
+Also took some inspiration from the GoMYSQL implementation, although I've backed much of that out in this initial release.
+https://github.com/Philio/GoMySQL
+I can see how it would be extremely useful for GoMYSQL or GoDBI to use HandlerSocket in the background for simple finds, inserts, etc.
+
+
+## ChangeLog
+
+1/20/2011
+	Updated library extensively
+	now working OpenIndex and Find commands
+
+
