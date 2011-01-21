@@ -9,6 +9,35 @@ Go library for connecting to HandlerSocket Mysql plugin.  See github.com/ahiguti
 	$ goinstall github.com/bketelsen/handlersocket-go
 
 
+## Read Example  - Best examples are in the TEST file.
+
+	hs := New()
+
+	// Connect to database
+	hs.Connect("127.0.0.1", 9998, 9999)
+	defer hs.Close()
+	hs.OpenIndex(1, "gotesting", "kvs", "PRIMARY", "id", "content")
+
+	found, _ := hs.Find(1, "=", 1, 0, "brian")
+
+	for i := range found {
+			fmt.Println(found[i].Data) 
+		}
+
+	fmt.Println(len(found), "rows returned")
+
+
+## Write Example
+
+	hs := New()
+	hs.Connect("127.0.0.1", 9998, 9999) // host, read port, write port
+	defer hs.Close()
+
+	// id is varchar(255), content is text
+	hs.OpenIndex(3, "gotesting", "kvs", "PRIMARY", "id", "content")
+
+	err := hs.Insert(3,"mykey1","a quick brown fox jumped over a lazy dog")
+
 
 ## Copyright and licensing
 
@@ -23,8 +52,8 @@ Brian Ketelsen - bketelsen@gmail.com
 ## Known bugs
 
 Implementation isn't complete.  
-Working:  OpenIndex, Find
-Not Implemented:  Update/Delete, Insert
+Working:  OpenIndex, Find, Insert
+Not Implemented:  Update/Delete
 
 
 ## Credits and acknowledgments
@@ -42,5 +71,8 @@ I can see how it would be extremely useful for GoMYSQL or GoDBI to use HandlerSo
 1/20/2011
 	Updated library extensively
 	now working OpenIndex and Find commands
+	
+1/21/2011
+	Insert works now
 
 

@@ -47,10 +47,14 @@ type HandlerSocket struct {
 	Logging bool
 	auth    *HandlerSocketAuth
 	conn    net.Conn
+	wrConn	net.Conn
 	//	In          <-chan HandlerSocketResponse
 	in          chan HandlerSocketResponse
 	out         chan HandlerSocketCommand
+	wrIn		chan HandlerSocketResponse
+	wrOut		chan HandlerSocketCommand
 	connected   bool
+	wrConnected	bool
 	mutex       *sync.Mutex
 }
 
@@ -85,6 +89,11 @@ type hsfindcommand struct {
 	offset	int
 }
 
+type hsinsertcommand struct {
+	command	string
+	params []string
+}
+
 type HandlerSocketResponse struct {
 	ReturnCode string
 	Data       []string
@@ -102,8 +111,11 @@ func (handlerSocket *HandlerSocket) OpenIndex(index int, dbName string, tableNam
 
 	handlerSocket.mutex.Lock()
 	handlerSocket.out <- &hsopencommand{command: "P", params: a}
-
+	handlerSocket.wrOut <- &hsopencommand{command: "P", params: a}
+	
+	message2 := <-handlerSocket.wrIn
 	message := <-handlerSocket.in
+	
 	handlerSocket.mutex.Unlock()
 
 	indexes[index] = columns
@@ -111,6 +123,11 @@ func (handlerSocket *HandlerSocket) OpenIndex(index int, dbName string, tableNam
 	if message.ReturnCode != "0" {
 		return os.NewError("Error Opening Index")
 	}
+	
+	if message2.ReturnCode != "0" {
+		return os.NewError("Error Opening Index")
+	}
+	
 
 	return
 }
@@ -130,6 +147,46 @@ func (handlerSocket *HandlerSocket) Find(index int, oper string, limit int, offs
 	
 	return parseResult(index,message), nil
 
+}
+/*
+----------------------------------------------------------------------------
+Inserting data
+
+The 'insert' request has the following syntax.
+
+    <indexid> '+' <vlen> <v1> ... <vn>
+
+- <vlen> indicates the length of the trailing parameters <v1> ... <vn>. This
+  must be smaller than or equal to the length of <columns> specified by the
+  corresponding 'open_index' request.
+- <v1> ... <vn> specify the column values to set. For columns not in
+  <columns>, the default values for each column are set.
+
+----------------------------------------------------------------------------
+*/
+func (handlerSocket *HandlerSocket) Insert(index int, vals ...string)(err os.Error){
+
+	
+	cols := strings.Join(vals, "\t")
+	strindex := strconv.Itoa(index)
+	colCount := strconv.Itoa(len(vals))
+	oper := "+"
+	
+	a := []string{oper, colCount, cols}
+
+	handlerSocket.mutex.Lock()
+	handlerSocket.wrOut <- &hsinsertcommand{command: strindex, params: a}
+	message := <-handlerSocket.wrIn
+	handlerSocket.mutex.Unlock()
+	
+	if message.ReturnCode == "1" {
+		return os.NewError("Data Exists")
+	}
+	
+	if message.ReturnCode != "0" {
+		return os.NewError("Error Inserting Data")
+	}
+	return nil
 }
 
 func parseResult(index int, hs HandlerSocketResponse) (rows []HandlerSocketRow) {
@@ -245,10 +302,13 @@ func New() (handlerSocket *HandlerSocket) {
 func (handlerSocket *HandlerSocket) connect() (err os.Error) {
 	localAddress, _ := net.ResolveTCPAddr("0.0.0.0:0")
 	targetAddress := fmt.Sprintf("%s:%d", handlerSocket.auth.host, handlerSocket.auth.readPort)
+	wrTargetAddress := fmt.Sprintf("%s:%d", handlerSocket.auth.host, handlerSocket.auth.writePort)
+	
 	hsAddress, err := net.ResolveTCPAddr(targetAddress)
-
+	hsWrAddress, err := net.ResolveTCPAddr(wrTargetAddress)
 
 	handlerSocket.conn, err = net.DialTCP("tcp", localAddress, hsAddress)
+	handlerSocket.wrConn, err = net.DialTCP("tcp", localAddress, hsWrAddress)
 
 	if handlerSocket.Logging {
 		log.Print("Connected using TCP/IP")
@@ -256,9 +316,14 @@ func (handlerSocket *HandlerSocket) connect() (err os.Error) {
 
 	handlerSocket.in = make(chan HandlerSocketResponse)
 	handlerSocket.out = make(chan HandlerSocketCommand)
+	handlerSocket.wrIn = make(chan HandlerSocketResponse)
+	handlerSocket.wrOut = make(chan HandlerSocketCommand)
 
 	go handlerSocket.reader(handlerSocket.conn)
 	go handlerSocket.writer(handlerSocket.conn)
+
+	go handlerSocket.wrreader(handlerSocket.wrConn)
+	go handlerSocket.wrwriter(handlerSocket.wrConn)
 	
 	indexes = make(map[int][]string,10)
 
@@ -291,8 +356,8 @@ func (handlerSocket *HandlerSocket) parseParams(p []interface{}) {
 
 func (f *hsopencommand) writeTo(w io.Writer) os.Error {
 
-	
 	if _, err := fmt.Fprintf(w, "%s\t%s\n", f.command, strings.Join(f.params, "\t")); err != nil {
+		fmt.Println("error writing to buffer")
 		return err
 	}
 
@@ -301,7 +366,6 @@ func (f *hsopencommand) writeTo(w io.Writer) os.Error {
 
 func (f *hsfindcommand) writeTo(w io.Writer) os.Error {
 
-	
 	if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%d\n", f.command, strings.Join(f.params, "\t"), f.limit, f.offset); err != nil {
 		return err
 	}
@@ -309,12 +373,21 @@ func (f *hsfindcommand) writeTo(w io.Writer) os.Error {
 	return nil
 }
 
+func (f *hsinsertcommand) writeTo(w io.Writer) os.Error {
+
+	if _, err := fmt.Fprintf(w, "%s\t%s\n", f.command, strings.Join(f.params, "\t")); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 
 func (c *HandlerSocket) reader(nc net.Conn) {
 	br := bufio.NewReader(nc)
 	var retString string
 	for {
+
 		b, err := br.ReadByte()
 		if err != nil {
 			// TODO(adg) handle error
@@ -334,7 +407,47 @@ func (c *HandlerSocket) reader(nc net.Conn) {
 
 func (c *HandlerSocket) writer(nc net.Conn) {
 	bw := bufio.NewWriter(nc)
+	
 	for f := range c.out {
+
+		if err := f.writeTo(bw); err != nil {
+			fmt.Println("ERROR:", err)
+		}
+
+		if err := bw.Flush(); err != nil {
+			fmt.Println("ERROR:", err)
+		}
+
+	}
+	nc.Close()
+	c.connected = false
+}
+
+func (c *HandlerSocket) wrreader(nc net.Conn) {
+	br := bufio.NewReader(nc)
+	var retString string
+	for {
+		b, err := br.ReadByte()
+		if err != nil {
+			// TODO(adg) handle error
+			if err == os.EOF{
+			break
+		}
+		}
+		retString += string(b)
+		if string(b) == "\n" {
+			strs := strings.Split(retString, "\t", -1)
+			hsr := HandlerSocketResponse{ReturnCode: strs[0], Data: strs[1:]}
+			c.wrIn <- hsr
+			retString = ""
+		}
+	}
+}
+
+func (c *HandlerSocket) wrwriter(nc net.Conn) {
+	bw := bufio.NewWriter(nc)
+	
+	for f := range c.wrOut {
 		if err := f.writeTo(bw); err != nil {
 			fmt.Println("ERROR:", err)
 		}
