@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	Version          = "0.0.2"
+	Version          = "0.0.3"
 	DefaultReadPort  = 9998
 	DefaultWritePort = 9999
 	MaxPacketSize    = 1 << 24
@@ -131,6 +131,32 @@ func (handlerSocket *HandlerSocket) OpenIndex(index int, dbName string, tableNam
 
 	return
 }
+
+/*
+
+----------------------------------------------------------------------------
+Updating/Deleting data
+
+The 'find_modify' request has the following syntax.
+
+    <indexid> <op> <vlen> <v1> ... <vn> <limit> <offset> <mop> <m1> ... <mk>
+
+- <mop> is either 'U' (update) or 'D' (delete).
+- <m1> ... <mk> specifies the column values to set. The length of <m1> ...
+  <mk> must be smaller than or equal to the length of <columns> specified by
+  the corresponding 'open_index' request. If <mop> is 'D', these parameters
+  are ignored.
+ind op	pc	key	lim off	mop	newpk	newval ...
+1	=	1	red	1	0	U	red	brian
+----------------------------------------------------------------------------
+
+*/
+func (handlerSocket *HandlerSocket) Modify(index int, oper string, limit int, offset int, keys []string, newvals []string ){
+	
+	
+}
+
+
 
 func (handlerSocket *HandlerSocket) Find(index int, oper string, limit int, offset int, vals ...string) (rows []HandlerSocketRow, err os.Error) {
 

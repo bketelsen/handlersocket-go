@@ -15,6 +15,16 @@ limitations under the License.
 
 */
 
+/*
+CREATE  TABLE `gotest`.`kvs` (
+  `id` VARCHAR(255) NOT NULL ,
+  `content` VARCHAR(255) NULL ,
+  PRIMARY KEY (`id`) )
+ENGINE = InnoDB;
+
+
+*/
+
 package handlersocket
 
 import (
@@ -35,7 +45,7 @@ func TestOpenIndex(t *testing.T) {
 	hs.Connect("127.0.0.1", 9998, 9999)
 	defer hs.Close()
 
-	hs.OpenIndex(1, "clarity_development", "users", "PRIMARY", "id", "login", "email")
+	hs.OpenIndex(1, "gotest", "kvs", "PRIMARY", "id", "content")
 
 
 
@@ -51,7 +61,7 @@ func TestWrite(t *testing.T) {
 	hs.Connect("127.0.0.1", 9998, 9999)
 	defer hs.Close()
 	// id is varchar(255), content is text
-	hs.OpenIndex(3, "gotesting", "kvs", "PRIMARY", "id", "content")
+	hs.OpenIndex(3, "gotest", "kvs", "PRIMARY", "id", "content")
 	
 	err := hs.Insert(3,"blue1","a quick brown fox jumped over a lazy dog")
 	if err != nil {
@@ -75,7 +85,7 @@ func TestRead(t *testing.T) {
 	hs.Connect("127.0.0.1", 9998, 9999)
 	defer hs.Close()
 
-	hs.OpenIndex(1, "gotesting", "kvs", "PRIMARY", "id", "content")
+	hs.OpenIndex(1, "gotest", "kvs", "PRIMARY", "id", "content")
 
 	found, _ := hs.Find(1, "=", 1, 0, "brian")
 
@@ -94,7 +104,7 @@ func BenchmarkOpenIndex(b *testing.B) {
 	hs.Connect("127.0.0.1", 9998, 9999)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-	hs.OpenIndex(1, "gotesting", "kvs", "PRIMARY", "id", "content")
+	hs.OpenIndex(1, "gotest", "kvs", "PRIMARY", "id", "content")
 
 	}
 }
@@ -104,7 +114,7 @@ func BenchmarkFind(b *testing.B) {
 	hs := New()
 	defer hs.Close()
 	hs.Connect("127.0.0.1", 9998, 9999)
-	hs.OpenIndex(1, "gotesting", "kvs", "PRIMARY", "id", "content")
+	hs.OpenIndex(1, "gotest", "kvs", "PRIMARY", "id", "content")
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
