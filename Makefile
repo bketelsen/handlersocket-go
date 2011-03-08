@@ -22,3 +22,8 @@ GOFILES=\
 
 
 include $(GOROOT)/src/Make.pkg
+
+format:
+	gofmt -w handlersocket.go
+	gofmt -w handlersocket_test.go
+	
