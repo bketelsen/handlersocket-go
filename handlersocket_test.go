@@ -60,12 +60,22 @@ func TestDelete(t *testing.T) {
 	// id is varchar(255), content is text
 	hs.OpenIndex(3, "gotest", "kvs", "PRIMARY", "id", "content")
 
-	count, err := hs.Modify(3, "=", 1, 0, "D", "blue1", "")
+	var keys, newvals []string
+	
+	keys = make([]string,1)
+	newvals = make([]string,0)
+	
+	keys[0] = "blue1"
+
+	count, err := hs.Modify(3, "=", 1, 0, "D", keys, newvals)
 	if err != nil {
 		t.Error(err)
 	}
+
 	fmt.Println("modified", count, "records")
-	count, err = hs.Modify(3, "=", 1, 0, "D", "blue2", "")
+
+	keys[0] = "blue2"
+	count, err = hs.Modify(3, "=", 1, 0, "D", keys, newvals)
 	if err != nil {
 		t.Error(err)
 	}
@@ -103,6 +113,64 @@ func TestWrite(t *testing.T) {
 
 }
 
+func TestModify(t *testing.T) {
+
+	fmt.Println("Testing Modify (Write First)")
+	hs := New()
+	// Enable logging
+	hs.Logging = true
+	// Connect to database
+	hs.Connect("127.0.0.1", 9998, 9999)
+	defer hs.Close()
+	// id is varchar(255), content is text
+	hs.OpenIndex(3, "gotest", "kvs", "PRIMARY", "id", "content")
+
+	err := hs.Insert(3, "blue1", "a quick brown fox jumped over a lazy dog")
+	if err != nil {
+		// We receive an error if the PK already exists.  This might not be a real "fail". 
+		// To test for sure, change the PK above before testing.
+
+		//TODO: make a new PK each time.
+		t.Error(err)
+	}
+	err = hs.Insert(3, "blue2", "a quick brown fox jumped over a lazy dog")
+	if err != nil {
+		// We receive an error if the PK already exists.  This might not be a real "fail". 
+		// To test for sure, change the PK above before testing.
+
+		//TODO: make a new PK each time.
+		t.Error(err)
+	}
+
+	fmt.Println("Testing Modify")
+
+	var keys, newvals []string
+	
+	keys = make([]string,1)
+	newvals = make([]string,2)
+	
+	keys[0] = "blue1"
+	newvals[0] = "blue7"
+	newvals[1] = "some new thing"
+
+	count, err := hs.Modify(3, "=", 1, 0, "U", keys, newvals)
+	if err != nil {
+		t.Error(err)
+	}
+
+	fmt.Println("modified", count, "records")
+
+	keys[0] = "blue2"
+	newvals[0] = "blue5"
+	newvals[1] = "My new value!"
+	count, err = hs.Modify(3, "=", 1, 0, "U", keys, newvals)
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println("modified", count, "records")
+
+}
+
 
 func TestRead(t *testing.T) {
 
@@ -115,7 +183,7 @@ func TestRead(t *testing.T) {
 
 	hs.OpenIndex(1, "gotest", "kvs", "PRIMARY", "id", "content")
 
-	found, _ := hs.Find(1, "=", 1, 0, "blue1")
+	found, _ := hs.Find(1, "=", 1, 0, "blue7")
 
 	for i := range found {
 		fmt.Println(found[i].Data)
