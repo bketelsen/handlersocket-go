@@ -51,6 +51,26 @@ func TestOpenIndex(t *testing.T) {
 
 }
 
+func TestDelete(t *testing.T) {
+	fmt.Println("Testing Delete")
+	hs := New()
+	// Enable logging
+	hs.Logging = true
+	// Connect to database
+	hs.Connect("127.0.0.1", 9998, 9999)
+	defer hs.Close()
+	// id is varchar(255), content is text
+	hs.OpenIndex(3, "gotest", "kvs", "PRIMARY", "id", "content")
+	
+	count, err := hs.Modify(3,"=",1,0,"D","blue1","")
+	if err != nil {
+		t.Error(err)
+		
+	}
+	fmt.Println("modified", count, "records")
+	
+}
+
 func TestWrite(t *testing.T) {
 	
 	fmt.Println("Testing Write")
@@ -69,9 +89,19 @@ func TestWrite(t *testing.T) {
 		// To test for sure, change the PK above before testing.
 		
 		//TODO: make a new PK each time.
-		t.Error(err)
-		
+		t.Error(err)		
 	}
+	err = hs.Insert(3,"blue2","a quick brown fox jumped over a lazy dog")
+	if err != nil {
+		// We receive an error if the PK already exists.  This might not be a real "fail". 
+		// To test for sure, change the PK above before testing.
+		
+		//TODO: make a new PK each time.
+		t.Error(err)		
+	}
+	
+	
+	
 	
 }
 
@@ -87,7 +117,7 @@ func TestRead(t *testing.T) {
 
 	hs.OpenIndex(1, "gotest", "kvs", "PRIMARY", "id", "content")
 
-	found, _ := hs.Find(1, "=", 1, 0, "brian")
+	found, _ := hs.Find(1, "=", 1, 0, "blue1")
 
 	for i := range found {
 		fmt.Println(found[i].Data)

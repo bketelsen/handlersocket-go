@@ -89,6 +89,15 @@ type hsfindcommand struct {
 	offset	int
 }
 
+type hsmodifycommand struct {
+	command string
+	criteria  []string
+	limit	int
+	offset	int
+	mop	string
+	newvals []string
+}
+
 type hsinsertcommand struct {
 	command	string
 	params []string
@@ -151,8 +160,32 @@ ind op	pc	key	lim off	mop	newpk	newval ...
 ----------------------------------------------------------------------------
 
 */
-func (handlerSocket *HandlerSocket) Modify(index int, oper string, limit int, offset int, keys []string, newvals []string ){
+func (handlerSocket *HandlerSocket) Modify(index int, oper string, limit int, offset int, modifyOper string, keys string, newvals string ) (modifiedRows int, err os.Error) {
 	
+
+//	query := strings.Join(keys, "\t")
+//	queryCount := strconv.Itoa(len(keys))
+
+//	a := []string{oper, queryCount, query}
+
+	a:= []string{oper,"1",keys}	
+	
+	if modifyOper == "D" {
+
+		handlerSocket.mutex.Lock()
+		handlerSocket.wrOut <- &hsmodifycommand{command: strconv.Itoa(index), criteria: a, limit: limit, offset: offset, mop:modifyOper}
+	}
+	
+	
+	message := <-handlerSocket.wrIn
+	handlerSocket.mutex.Unlock()
+	
+	if message.ReturnCode == "1" {
+		return 0, os.NewError("Error Something")
+	}
+	
+	return strconv.Atoi(strings.TrimSpace(message.Data[1]))
+
 	
 }
 
@@ -393,6 +426,17 @@ func (f *hsopencommand) writeTo(w io.Writer) os.Error {
 func (f *hsfindcommand) writeTo(w io.Writer) os.Error {
 
 	if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%d\n", f.command, strings.Join(f.params, "\t"), f.limit, f.offset); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *hsmodifycommand) writeTo(w io.Writer) os.Error {
+
+	fmt.Printf( "%s\t%s\t%d\t%d\t%s\n", f.command, strings.Join(f.criteria, "\t"), f.limit, f.offset, f.mop)
+
+	if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%s\n", f.command, strings.Join(f.criteria, "\t"), f.limit, f.offset, f.mop); err != nil {
 		return err
 	}
 
