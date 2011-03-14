@@ -187,7 +187,7 @@ func (handlerSocket *HandlerSocket) Modify(index int, oper string, limit int, of
 	handlerSocket.mutex.Unlock()
 
 	if message.ReturnCode == "1" {
-		fmt.Println(message)
+
 		return 0, os.NewError("Error Something")
 	}
 
@@ -417,7 +417,7 @@ func (handlerSocket *HandlerSocket) parseParams(p []interface{}) {
 func (f *hsopencommand) write(w io.Writer) os.Error {
 
 	if _, err := fmt.Fprintf(w, "%s\t%s\n", f.command, strings.Join(f.params, "\t")); err != nil {
-		fmt.Println("error writing to buffer")
+
 		return err
 	}
 
@@ -480,11 +480,11 @@ func (c *HandlerSocket) writer(nc net.Conn) {
 	for f := range c.out {
 
 		if err := f.write(bw); err != nil {
-			fmt.Println("ERROR:", err)
+			panic(err)
 		}
 
 		if err := bw.Flush(); err != nil {
-			fmt.Println("ERROR:", err)
+			panic(err)
 		}
 
 	}
@@ -498,7 +498,7 @@ func (c *HandlerSocket) wrreader(nc net.Conn) {
 	for {
 		b, err := br.ReadByte()
 		if err != nil {
-			// TODO(adg) handle error
+
 			if err == os.EOF {
 				break
 			}
@@ -518,11 +518,11 @@ func (c *HandlerSocket) wrwriter(nc net.Conn) {
 
 	for f := range c.wrOut {
 		if err := f.write(bw); err != nil {
-			fmt.Println("ERROR:", err)
+			panic(err)
 		}
 
 		if err := bw.Flush(); err != nil {
-			fmt.Println("ERROR:", err)
+			panic(err)
 		}
 
 	}

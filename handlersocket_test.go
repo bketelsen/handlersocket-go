@@ -29,14 +29,12 @@ package handlersocket
 
 import (
 	"testing"
-	"fmt"
 	"strconv"
 )
 
 
 func TestOpenIndex(t *testing.T) {
 
-	fmt.Println("Testing Open")
 	// Create new instance
 	hs := New()
 	// Enable logging - which doesn't do much yet
@@ -51,7 +49,7 @@ func TestOpenIndex(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	fmt.Println("Testing Delete")
+
 	hs := New()
 	// Enable logging
 	hs.Logging = true
@@ -70,12 +68,10 @@ func TestDelete(t *testing.T) {
 	
 	for n:=1; n<10; n++ {
 		keys[0] = "blue" + strconv.Itoa(n)
-		count, err := hs.Modify(3, "=", 10, 0, "D", keys, newvals)
+		_, err := hs.Modify(3, "=", 10, 0, "D", keys, newvals)
 		if err != nil {
 			t.Error(err)
 		}
-		fmt.Println("modified", count, "records")
-		
 	}
 	
 	
@@ -84,7 +80,6 @@ func TestDelete(t *testing.T) {
 
 func TestWrite(t *testing.T) {
 
-	fmt.Println("Testing Write")
 	hs := New()
 	// Enable logging
 	hs.Logging = true
@@ -115,7 +110,6 @@ func TestWrite(t *testing.T) {
 
 func TestModify(t *testing.T) {
 
-	fmt.Println("Testing Modify (Write First)")
 	hs := New()
 	// Enable logging
 	hs.Logging = true
@@ -142,7 +136,7 @@ func TestModify(t *testing.T) {
 		t.Error(err)
 	}
 
-	fmt.Println("Testing Modify")
+
 
 	var keys, newvals []string
 	
@@ -153,21 +147,21 @@ func TestModify(t *testing.T) {
 	newvals[0] = "blue7"
 	newvals[1] = "some new thing"
 
-	count, err := hs.Modify(3, "=", 1, 0, "U", keys, newvals)
+	_, err = hs.Modify(3, "=", 1, 0, "U", keys, newvals)
 	if err != nil {
 		t.Error(err)
 	}
 
-	fmt.Println("modified", count, "records")
+
 
 	keys[0] = "blue4"
 	newvals[0] = "blue5"
 	newvals[1] = "My new value!"
-	count, err = hs.Modify(3, "=", 1, 0, "U", keys, newvals)
+	_, err = hs.Modify(3, "=", 1, 0, "U", keys, newvals)
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println("modified", count, "records")
+
 
 }
 
@@ -185,11 +179,11 @@ func TestRead(t *testing.T) {
 
 	found, _ := hs.Find(1, "=", 1, 0, "blue7")
 
-	for i := range found {
-		fmt.Println(found[i].Data)
+
+	if len(found) < 1 {
+		t.Error("Expected one record for blue7")
 	}
 
-	fmt.Println(len(found), "rows returned")
 
 }
 
