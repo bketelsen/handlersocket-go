@@ -39,6 +39,23 @@ Go library for connecting to HandlerSocket Mysql plugin.  See github.com/ahiguti
 	err := hs.Insert(3,"mykey1","a quick brown fox jumped over a lazy dog")
 
 
+## Modify Example
+
+	var keys, newvals []string
+	keys = make([]string,1)
+	newvals = make([]string,2)
+	keys[0] = "blue3"
+	newvals[0] = "blue7"
+	newvals[1] = "some new thing"
+	count, err := hs.Modify(3, "=", 1, 0, "U", keys, newvals)
+	if err != nil {
+		t.Error(err)
+		}
+	fmt.Println("modified", count, "records")
+
+
+
+
 ## Copyright and licensing
 
 Licensed under **Apache License, version 2.0**.  
@@ -51,19 +68,24 @@ Brian Ketelsen - bketelsen@gmail.com
 
 ## Known bugs
 
-Implementation isn't complete.  
-Working:  OpenIndex, Find, Insert
-Not Implemented:  Update/Delete - NEXT
+No known bugs, but testing is far from comprehensive.
+
+Working:  OpenIndex, Find, Insert,  Update/Delete
+
+
+## Todo
+
+Provide a layer of abstraction from the wire-level implementation of HandlerSocket to make a more intuitive interface.
+
+
 
 
 ## Credits and acknowledgments
 
-I was heavily inspired by IO code from stomp.go
-https://github.com/nf/gostomp/blob/master/stomp.go
 
-Also took some inspiration from the GoMYSQL implementation, although I've backed much of that out in this initial release.
+Took some inspiration from the original GoMySQL implementation, although I've backed much of that out in this initial release.
 https://github.com/Philio/GoMySQL
-I can see how it would be extremely useful for GoMYSQL or GoDBI to use HandlerSocket in the background for simple finds, inserts, etc.
+I can see how it would be extremely useful for GoMySQL or GoDBI to use HandlerSocket in the background for simple finds, inserts, etc.
 
 
 ## ChangeLog
@@ -74,5 +96,8 @@ I can see how it would be extremely useful for GoMYSQL or GoDBI to use HandlerSo
 	
 1/21/2011
 	Insert works now
+	
+3/14/2011
+	Modify and Delete work now - need more tests!
 
 
