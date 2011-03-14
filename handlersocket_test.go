@@ -30,6 +30,7 @@ package handlersocket
 import (
 	"testing"
 	"fmt"
+	"strconv"
 )
 
 
@@ -64,22 +65,21 @@ func TestDelete(t *testing.T) {
 	
 	keys = make([]string,1)
 	newvals = make([]string,0)
+
+
 	
-	keys[0] = "blue1"
-
-	count, err := hs.Modify(3, "=", 1, 0, "D", keys, newvals)
-	if err != nil {
-		t.Error(err)
+	for n:=1; n<10; n++ {
+		keys[0] = "blue" + strconv.Itoa(n)
+		count, err := hs.Modify(3, "=", 10, 0, "D", keys, newvals)
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println("modified", count, "records")
+		
 	}
-
-	fmt.Println("modified", count, "records")
-
-	keys[0] = "blue2"
-	count, err = hs.Modify(3, "=", 1, 0, "D", keys, newvals)
-	if err != nil {
-		t.Error(err)
-	}
-	fmt.Println("modified", count, "records")
+	
+	
+	
 }
 
 func TestWrite(t *testing.T) {
@@ -125,7 +125,7 @@ func TestModify(t *testing.T) {
 	// id is varchar(255), content is text
 	hs.OpenIndex(3, "gotest", "kvs", "PRIMARY", "id", "content")
 
-	err := hs.Insert(3, "blue1", "a quick brown fox jumped over a lazy dog")
+	err := hs.Insert(3, "blue3", "a quick brown fox jumped over a lazy dog")
 	if err != nil {
 		// We receive an error if the PK already exists.  This might not be a real "fail". 
 		// To test for sure, change the PK above before testing.
@@ -133,7 +133,7 @@ func TestModify(t *testing.T) {
 		//TODO: make a new PK each time.
 		t.Error(err)
 	}
-	err = hs.Insert(3, "blue2", "a quick brown fox jumped over a lazy dog")
+	err = hs.Insert(3, "blue4", "a quick brown fox jumped over a lazy dog")
 	if err != nil {
 		// We receive an error if the PK already exists.  This might not be a real "fail". 
 		// To test for sure, change the PK above before testing.
@@ -149,7 +149,7 @@ func TestModify(t *testing.T) {
 	keys = make([]string,1)
 	newvals = make([]string,2)
 	
-	keys[0] = "blue1"
+	keys[0] = "blue3"
 	newvals[0] = "blue7"
 	newvals[1] = "some new thing"
 
@@ -160,7 +160,7 @@ func TestModify(t *testing.T) {
 
 	fmt.Println("modified", count, "records")
 
-	keys[0] = "blue2"
+	keys[0] = "blue4"
 	newvals[0] = "blue5"
 	newvals[1] = "My new value!"
 	count, err = hs.Modify(3, "=", 1, 0, "U", keys, newvals)
