@@ -361,12 +361,12 @@ func New() (handlerSocket *HandlerSocket) {
  * Create connection to server using unix socket or tcp/ip then setup buffered reader/writer
  */
 func (handlerSocket *HandlerSocket) connect() (err os.Error) {
-	localAddress, _ := net.ResolveTCPAddr("0.0.0.0:0")
+	localAddress, _ := net.ResolveTCPAddr("tcp","0.0.0.0:0")
 	targetAddress := fmt.Sprintf("%s:%d", handlerSocket.auth.host, handlerSocket.auth.readPort)
 	wrTargetAddress := fmt.Sprintf("%s:%d", handlerSocket.auth.host, handlerSocket.auth.writePort)
 
-	hsAddress, err := net.ResolveTCPAddr(targetAddress)
-	hsWrAddress, err := net.ResolveTCPAddr(wrTargetAddress)
+	hsAddress, err := net.ResolveTCPAddr("tcp",targetAddress)
+	hsWrAddress, err := net.ResolveTCPAddr("tcp",wrTargetAddress)
 
 	handlerSocket.conn, err = net.DialTCP("tcp", localAddress, hsAddress)
 	handlerSocket.wrConn, err = net.DialTCP("tcp", localAddress, hsWrAddress)

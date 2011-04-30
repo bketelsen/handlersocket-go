@@ -61,11 +61,9 @@ func TestDelete(t *testing.T) {
 
 	var keys, newvals []string
 	
-	keys = make([]string,1)
+        keys = make([]string,1)
 	newvals = make([]string,0)
 
-
-	
 	for n:=1; n<10; n++ {
 		keys[0] = "blue" + strconv.Itoa(n)
 		_, err := hs.Modify(3, "=", 10, 0, "D", keys, newvals)
@@ -73,9 +71,6 @@ func TestDelete(t *testing.T) {
 			t.Error(err)
 		}
 	}
-	
-	
-	
 }
 
 func TestWrite(t *testing.T) {
