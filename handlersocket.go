@@ -15,19 +15,18 @@ limitations under the License.
 
 */
 
-
 package handlersocket
 
 import (
-	"net"
-	"os"
-	"log"
 	"bufio"
-	"sync"
+	"errors"
 	"fmt"
-	"strings"
 	"io"
+	"log"
+	"net"
 	"strconv"
+	"strings"
+	"sync"
 )
 
 const (
@@ -36,7 +35,6 @@ const (
 	DefaultWritePort = 9999
 	MaxPacketSize    = 1 << 24
 )
-
 
 /**
  * The main HandlerSocket struct
@@ -58,7 +56,6 @@ type HandlerSocket struct {
 	mutex       *sync.Mutex
 }
 
-
 type HandlerSocketAuth struct {
 	host      string
 	dbname    string
@@ -74,7 +71,7 @@ type HandlerSocketRow struct {
 }
 
 type HandlerSocketCommandWriter interface {
-	write(w io.Writer) (err os.Error)
+	write(w io.Writer) (err error)
 }
 
 type hsopencommand struct {
@@ -112,7 +109,7 @@ type header map[string]string
 
 var indexes map[int][]string
 
-func (handlerSocket *HandlerSocket) OpenIndex(index int, dbName string, tableName string, indexName string, columns ...string) (err os.Error) {
+func (handlerSocket *HandlerSocket) OpenIndex(index int, dbName string, tableName string, indexName string, columns ...string) (err error) {
 
 	cols := strings.Join(columns, ",")
 	strindex := strconv.Itoa(index)
@@ -130,11 +127,11 @@ func (handlerSocket *HandlerSocket) OpenIndex(index int, dbName string, tableNam
 	indexes[index] = columns
 
 	if message.ReturnCode != "0" {
-		return os.NewError("Error Opening Index")
+		return errors.New("Error Opening Index")
 	}
 
 	if message2.ReturnCode != "0" {
-		return os.NewError("Error Opening Index")
+		return errors.New("Error Opening Index")
 	}
 
 	return
@@ -159,12 +156,10 @@ ind op	pc	key	lim off	mop	newpk	newval ...
 ----------------------------------------------------------------------------
 
 */
-func (handlerSocket *HandlerSocket) Modify(index int, oper string, limit int, offset int, modifyOper string, keys []string, newvals []string) (modifiedRows int, err os.Error) {
+func (handlerSocket *HandlerSocket) Modify(index int, oper string, limit int, offset int, modifyOper string, keys []string, newvals []string) (modifiedRows int, err error) {
 
 	query := strings.Join(keys, "\t")
 	queryCount := strconv.Itoa(len(keys))
-	
-	
 
 	a := []string{oper, queryCount, query}
 
@@ -175,28 +170,26 @@ func (handlerSocket *HandlerSocket) Modify(index int, oper string, limit int, of
 		handlerSocket.mutex.Lock()
 		handlerSocket.wrOut <- &hsmodifycommand{command: strconv.Itoa(index), criteria: a, limit: limit, offset: offset, mop: modifyOper}
 	}
-	
-		if modifyOper == "U" {
+
+	if modifyOper == "U" {
 
 		handlerSocket.mutex.Lock()
-		handlerSocket.wrOut <- &hsmodifycommand{command: strconv.Itoa(index), criteria: a, limit: limit, offset: offset, mop: modifyOper, newvals: newvals }
+		handlerSocket.wrOut <- &hsmodifycommand{command: strconv.Itoa(index), criteria: a, limit: limit, offset: offset, mop: modifyOper, newvals: newvals}
 	}
-	
 
 	message := <-handlerSocket.wrIn
 	handlerSocket.mutex.Unlock()
 
 	if message.ReturnCode == "1" {
 
-		return 0, os.NewError("Error Something")
+		return 0, errors.New("Error Something")
 	}
 
 	return strconv.Atoi(strings.TrimSpace(message.Data[1]))
 
 }
 
-
-func (handlerSocket *HandlerSocket) Find(index int, oper string, limit int, offset int, vals ...string) (rows []HandlerSocketRow, err os.Error) {
+func (handlerSocket *HandlerSocket) Find(index int, oper string, limit int, offset int, vals ...string) (rows []HandlerSocketRow, err error) {
 
 	cols := strings.Join(vals, "\t")
 	strindex := strconv.Itoa(index)
@@ -212,6 +205,7 @@ func (handlerSocket *HandlerSocket) Find(index int, oper string, limit int, offs
 	return parseResult(index, message), nil
 
 }
+
 /*
 ----------------------------------------------------------------------------
 Inserting data
@@ -228,8 +222,7 @@ The 'insert' request has the following syntax.
 
 ----------------------------------------------------------------------------
 */
-func (handlerSocket *HandlerSocket) Insert(index int, vals ...string) (err os.Error) {
-
+func (handlerSocket *HandlerSocket) Insert(index int, vals ...string) (err error) {
 
 	cols := strings.Join(vals, "\t")
 	strindex := strconv.Itoa(index)
@@ -244,11 +237,11 @@ func (handlerSocket *HandlerSocket) Insert(index int, vals ...string) (err os.Er
 	handlerSocket.mutex.Unlock()
 
 	if message.ReturnCode == "1" {
-		return os.NewError("INSERT: Data Exists")
+		return errors.New("INSERT: Data Exists")
 	}
 
 	if message.ReturnCode != "0" {
-		return os.NewError("Error Inserting Data")
+		return errors.New("Error Inserting Data")
 	}
 	return nil
 }
@@ -278,13 +271,13 @@ func parseResult(index int, hs HandlerSocketResponse) (rows []HandlerSocketRow) 
 /**
  * Close the connection to the server
  */
-func (handlerSocket *HandlerSocket) Close() (err os.Error) {
+func (handlerSocket *HandlerSocket) Close() (err error) {
 	if handlerSocket.Logging {
 		log.Print("Close called")
 	}
 	// If not connected return
 	if !handlerSocket.connected {
-		err = os.NewError("A connection to a MySQL server is required to use this function")
+		err = errors.New("A connection to a MySQL server is required to use this function")
 		return
 	}
 
@@ -300,11 +293,10 @@ func (handlerSocket *HandlerSocket) Close() (err os.Error) {
 	return
 }
 
-
 /**
  * Reconnect (if connection droppped etc)
  */
-func (handlerSocket *HandlerSocket) Reconnect() (err os.Error) {
+func (handlerSocket *HandlerSocket) Reconnect() (err error) {
 	if handlerSocket.Logging {
 		log.Print("Reconnect called")
 	}
@@ -320,23 +312,22 @@ func (handlerSocket *HandlerSocket) Reconnect() (err os.Error) {
 	return
 }
 
-
 /**
  * Connect to a server
  */
-func (handlerSocket *HandlerSocket) Connect(params ...interface{}) (err os.Error) {
+func (handlerSocket *HandlerSocket) Connect(params ...interface{}) (err error) {
 	if handlerSocket.Logging {
 		log.Print("Connect called")
 	}
 	// If already connected return
 	if handlerSocket.connected {
-		err = os.NewError("Already connected to server")
+		err = errors.New("Already connected to server")
 		return
 	}
 
 	// Check min number of params
 	if len(params) < 2 {
-		err = os.NewError("A hostname and username are required to connect")
+		err = errors.New("A hostname and username are required to connect")
 		return
 	}
 	// Parse params
@@ -360,13 +351,13 @@ func New() (handlerSocket *HandlerSocket) {
 /**
  * Create connection to server using unix socket or tcp/ip then setup buffered reader/writer
  */
-func (handlerSocket *HandlerSocket) connect() (err os.Error) {
-	localAddress, _ := net.ResolveTCPAddr("tcp","0.0.0.0:0")
+func (handlerSocket *HandlerSocket) connect() (err error) {
+	localAddress, _ := net.ResolveTCPAddr("tcp", "0.0.0.0:0")
 	targetAddress := fmt.Sprintf("%s:%d", handlerSocket.auth.host, handlerSocket.auth.readPort)
 	wrTargetAddress := fmt.Sprintf("%s:%d", handlerSocket.auth.host, handlerSocket.auth.writePort)
 
-	hsAddress, err := net.ResolveTCPAddr("tcp",targetAddress)
-	hsWrAddress, err := net.ResolveTCPAddr("tcp",wrTargetAddress)
+	hsAddress, err := net.ResolveTCPAddr("tcp", targetAddress)
+	hsWrAddress, err := net.ResolveTCPAddr("tcp", wrTargetAddress)
 
 	handlerSocket.conn, err = net.DialTCP("tcp", localAddress, hsAddress)
 	handlerSocket.wrConn, err = net.DialTCP("tcp", localAddress, hsWrAddress)
@@ -392,7 +383,6 @@ func (handlerSocket *HandlerSocket) connect() (err os.Error) {
 	return
 }
 
-
 /**
  * Parse params given to Connect()
  */
@@ -413,8 +403,7 @@ func (handlerSocket *HandlerSocket) parseParams(p []interface{}) {
 	return
 }
 
-
-func (f *hsopencommand) write(w io.Writer) os.Error {
+func (f *hsopencommand) write(w io.Writer) error {
 
 	if _, err := fmt.Fprintf(w, "%s\t%s\n", f.command, strings.Join(f.params, "\t")); err != nil {
 
@@ -424,7 +413,7 @@ func (f *hsopencommand) write(w io.Writer) os.Error {
 	return nil
 }
 
-func (f *hsfindcommand) write(w io.Writer) os.Error {
+func (f *hsfindcommand) write(w io.Writer) error {
 
 	if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%d\n", f.command, strings.Join(f.params, "\t"), f.limit, f.offset); err != nil {
 		return err
@@ -433,16 +422,16 @@ func (f *hsfindcommand) write(w io.Writer) os.Error {
 	return nil
 }
 
-func (f *hsmodifycommand) write(w io.Writer) os.Error {
+func (f *hsmodifycommand) write(w io.Writer) error {
 
-	if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%s\t%s\n", f.command, strings.Join(f.criteria, "\t"), f.limit, f.offset, f.mop, strings.Join(f.newvals,"\t"))	; err != nil {
+	if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%s\t%s\n", f.command, strings.Join(f.criteria, "\t"), f.limit, f.offset, f.mop, strings.Join(f.newvals, "\t")); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (f *hsinsertcommand) write(w io.Writer) os.Error {
+func (f *hsinsertcommand) write(w io.Writer) error {
 
 	if _, err := fmt.Fprintf(w, "%s\t%s\n", f.command, strings.Join(f.params, "\t")); err != nil {
 		return err
@@ -450,7 +439,6 @@ func (f *hsinsertcommand) write(w io.Writer) os.Error {
 
 	return nil
 }
-
 
 func (c *HandlerSocket) reader(nc net.Conn) {
 	br := bufio.NewReader(nc)
@@ -460,13 +448,13 @@ func (c *HandlerSocket) reader(nc net.Conn) {
 		b, err := br.ReadByte()
 		if err != nil {
 			// TODO(adg) handle error
-			if err == os.EOF {
+			if err == io.EOF {
 				break
 			}
 		}
 		retString += string(b)
 		if string(b) == "\n" {
-			strs := strings.Split(retString, "\t", -1)
+			strs := strings.Split(retString, "\t") //, -1)
 			hsr := HandlerSocketResponse{ReturnCode: strs[0], Data: strs[1:]}
 			c.in <- hsr
 			retString = ""
@@ -499,13 +487,13 @@ func (c *HandlerSocket) wrreader(nc net.Conn) {
 		b, err := br.ReadByte()
 		if err != nil {
 
-			if err == os.EOF {
+			if err == io.EOF {
 				break
 			}
 		}
 		retString += string(b)
 		if string(b) == "\n" {
-			strs := strings.Split(retString, "\t", -1)
+			strs := strings.Split(retString, "\t") //, -1)
 			hsr := HandlerSocketResponse{ReturnCode: strs[0], Data: strs[1:]}
 			c.wrIn <- hsr
 			retString = ""
