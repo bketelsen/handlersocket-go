@@ -6,7 +6,7 @@ Go library for connecting to HandlerSocket Mysql plugin.  See github.com/ahiguti
 
 ## Installation
 
-	$ goinstall github.com/bketelsen/handlersocket-go
+	$ go get github.com/bketelsen/handlersocket-go
 
 
 ## Read Example  - Best examples are in the TEST file.
