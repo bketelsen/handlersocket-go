@@ -443,6 +443,7 @@ func (f *hsinsertcommand) write(w io.Writer) error {
 func (c *HandlerSocket) reader(nc net.Conn) {
 	br := bufio.NewReader(nc)
 	var retString string
+	var bytes []byte
 	for {
 
 		b, err := br.ReadByte()
@@ -452,12 +453,14 @@ func (c *HandlerSocket) reader(nc net.Conn) {
 				break
 			}
 		}
-		retString += string(b)
+		bytes = append(bytes, b)
 		if string(b) == "\n" {
+		  retString = string(bytes)
 			strs := strings.Split(retString, "\t") //, -1)
 			hsr := HandlerSocketResponse{ReturnCode: strs[0], Data: strs[1:]}
 			c.in <- hsr
 			retString = ""
+			bytes = []byte{}
 		}
 	}
 }
