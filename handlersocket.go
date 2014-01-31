@@ -453,15 +453,18 @@ func (c *HandlerSocket) reader(nc net.Conn) {
 				break
 			}
 		}
-		bytes = append(bytes, b)
-		if string(b) == "\n" {
-		  retString = string(bytes)
+
+		if string(b) != "\n" {
+      bytes = append(bytes, b)
+    } else {
+      retString = string(bytes)
 			strs := strings.Split(retString, "\t") //, -1)
 			hsr := HandlerSocketResponse{ReturnCode: strs[0], Data: strs[1:]}
 			c.in <- hsr
 			retString = ""
 			bytes = []byte{}
 		}
+
 	}
 }
 
