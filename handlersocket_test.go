@@ -20,9 +20,7 @@ CREATE  TABLE `gotest`.`kvs` (
   `id` VARCHAR(255) NOT NULL ,
   `content` VARCHAR(255) NULL ,
   PRIMARY KEY (`id`) )
-ENGINE = InnoDB;
-
-
+ENGINE = InnoDB DEFAULT CHARSET=utf8;
 */
 
 package handlersocket
@@ -60,7 +58,7 @@ func TestDelete(t *testing.T) {
 	hs.OpenIndex(3, "gotest", "kvs", "PRIMARY", "id", "content")
 
 	var keys, newvals []string
-	
+
         keys = make([]string,1)
 	newvals = make([]string,0)
 
@@ -86,7 +84,7 @@ func TestWrite(t *testing.T) {
 
 	err := hs.Insert(3, "blue1", "a quick brown fox jumped over a lazy dog")
 	if err != nil {
-		// We receive an error if the PK already exists.  This might not be a real "fail". 
+		// We receive an error if the PK already exists.  This might not be a real "fail".
 		// To test for sure, change the PK above before testing.
 
 		//TODO: make a new PK each time.
@@ -94,11 +92,17 @@ func TestWrite(t *testing.T) {
 	}
 	err = hs.Insert(3, "blue2", "a quick brown fox jumped over a lazy dog")
 	if err != nil {
-		// We receive an error if the PK already exists.  This might not be a real "fail". 
+		// We receive an error if the PK already exists.  This might not be a real "fail".
 		// To test for sure, change the PK above before testing.
 
 		//TODO: make a new PK each time.
 		t.Error(err)
+	}
+
+	// Chinese Data
+	err = hs.Insert(3, "chinese", "中文測試資料")
+	if err != nil {
+    t.Error(err)
 	}
 
 }
@@ -116,7 +120,7 @@ func TestModify(t *testing.T) {
 
 	err := hs.Insert(3, "blue3", "a quick brown fox jumped over a lazy dog")
 	if err != nil {
-		// We receive an error if the PK already exists.  This might not be a real "fail". 
+		// We receive an error if the PK already exists.  This might not be a real "fail".
 		// To test for sure, change the PK above before testing.
 
 		//TODO: make a new PK each time.
@@ -124,7 +128,7 @@ func TestModify(t *testing.T) {
 	}
 	err = hs.Insert(3, "blue4", "a quick brown fox jumped over a lazy dog")
 	if err != nil {
-		// We receive an error if the PK already exists.  This might not be a real "fail". 
+		// We receive an error if the PK already exists.  This might not be a real "fail".
 		// To test for sure, change the PK above before testing.
 
 		//TODO: make a new PK each time.
@@ -134,10 +138,10 @@ func TestModify(t *testing.T) {
 
 
 	var keys, newvals []string
-	
+
 	keys = make([]string,1)
 	newvals = make([]string,2)
-	
+
 	keys[0] = "blue3"
 	newvals[0] = "blue7"
 	newvals[1] = "some new thing"
@@ -178,6 +182,16 @@ func TestRead(t *testing.T) {
 	if len(found) < 1 {
 		t.Error("Expected one record for blue7")
 	}
+
+  found, _ = hs.Find(1, "=", 1, 0, "chinese")
+
+  if len(found) < 1 {
+    t.Error("Expected one record for chinese")
+  }
+
+  if found[0].Data["content"] != "中文測試資料" {
+    t.Error("Expected one record content is 中文測試資料 but get", found[0].Data["content"])
+  }
 
 
 }
