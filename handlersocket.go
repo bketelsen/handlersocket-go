@@ -110,7 +110,9 @@ type header map[string]string
 var indexes map[int][]string
 
 func (handlerSocket *HandlerSocket) OpenIndex(index int, dbName string, tableName string, indexName string, columns ...string) (err error) {
-
+	if !handlerSocket.connected {
+		handlerSocket.connect()
+	}
 	cols := strings.Join(columns, ",")
 	strindex := strconv.Itoa(index)
 	a := []string{strindex, dbName, tableName, indexName, cols}
@@ -455,9 +457,9 @@ func (c *HandlerSocket) reader(nc net.Conn) {
 		}
 
 		if string(b) != "\n" {
-      bytes = append(bytes, b)
-    } else {
-      retString = string(bytes)
+			bytes = append(bytes, b)
+		} else {
+			retString = string(bytes)
 			strs := strings.Split(retString, "\t") //, -1)
 			hsr := HandlerSocketResponse{ReturnCode: strs[0], Data: strs[1:]}
 			c.in <- hsr
@@ -466,6 +468,8 @@ func (c *HandlerSocket) reader(nc net.Conn) {
 		}
 
 	}
+	nc.Close()
+	c.connected = false
 }
 
 func (c *HandlerSocket) writer(nc net.Conn) {
@@ -505,6 +509,8 @@ func (c *HandlerSocket) wrreader(nc net.Conn) {
 			retString = ""
 		}
 	}
+	nc.Close()
+	c.connected = false
 }
 
 func (c *HandlerSocket) wrwriter(nc net.Conn) {
