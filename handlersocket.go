@@ -454,6 +454,7 @@ func (c *HandlerSocket) reader(nc net.Conn) {
 			if err == io.EOF {
 				break
 			}
+			break
 		}
 
 		if string(b) != "\n" {
