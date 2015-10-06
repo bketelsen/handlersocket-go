@@ -93,6 +93,7 @@ type hsmodifycommand struct {
 	offset   int
 	mop      string
 	newvals  []string
+	filter   []string
 }
 
 type hsinsertcommand struct {
@@ -158,7 +159,7 @@ ind op	pc	key	lim off	mop	newpk	newval ...
 ----------------------------------------------------------------------------
 
 */
-func (handlerSocket *HandlerSocket) Modify(index int, oper string, limit int, offset int, modifyOper string, keys []string, newvals []string) (modifiedRows int, err error) {
+func (handlerSocket *HandlerSocket) Modify(index int, oper string, limit int, offset int, modifyOper string, keys []string, filter []string, newvals []string) (modifiedRows int, err error) {
 
 	query := strings.Join(keys, "\t")
 	queryCount := strconv.Itoa(len(keys))
@@ -170,13 +171,13 @@ func (handlerSocket *HandlerSocket) Modify(index int, oper string, limit int, of
 	if modifyOper == "D" {
 
 		handlerSocket.mutex.Lock()
-		handlerSocket.wrOut <- &hsmodifycommand{command: strconv.Itoa(index), criteria: a, limit: limit, offset: offset, mop: modifyOper}
+		handlerSocket.wrOut <- &hsmodifycommand{command: strconv.Itoa(index), criteria: a, limit: limit, offset: offset, mop: modifyOper, filter: filter}
 	}
 
 	if modifyOper == "U" {
 
 		handlerSocket.mutex.Lock()
-		handlerSocket.wrOut <- &hsmodifycommand{command: strconv.Itoa(index), criteria: a, limit: limit, offset: offset, mop: modifyOper, newvals: newvals}
+		handlerSocket.wrOut <- &hsmodifycommand{command: strconv.Itoa(index), criteria: a, limit: limit, offset: offset, mop: modifyOper, newvals: newvals, filter: filter}
 	}
 
 	message := <-handlerSocket.wrIn
@@ -426,7 +427,7 @@ func (f *hsfindcommand) write(w io.Writer) error {
 
 func (f *hsmodifycommand) write(w io.Writer) error {
 
-	if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%s\t%s\n", f.command, strings.Join(f.criteria, "\t"), f.limit, f.offset, f.mop, strings.Join(f.newvals, "\t")); err != nil {
+	if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%s\t%s\t%s\n", f.command, strings.Join(f.criteria, "\t"), f.limit, f.offset, strings.Join(f.filter, "\t"), f.mop, strings.Join(f.newvals, "\t")); err != nil {
 		return err
 	}
 
